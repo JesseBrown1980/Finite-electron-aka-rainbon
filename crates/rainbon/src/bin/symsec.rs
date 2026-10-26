@@ -102,7 +102,7 @@ fn main() {
     let jb: i64 = a[5].parse().unwrap_or(0);
     let steps: usize = a[6].parse().unwrap_or(2000);
     let guess: i128 = a[7].parse().unwrap_or(1_000_000);
-    if !(3..=16).contains(&l) || !(sector == "A" || sector == "Pz") {
+    if !(3..=20).contains(&l) || !(sector == "A" || sector == "Pz") {
         println!("SYMSEC|error=bad_arguments|json=0");
         std::process::exit(1);
     }

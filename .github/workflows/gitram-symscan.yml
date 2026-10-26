@@ -1,0 +1,123 @@
+# GitRAM lane for the rainbon symmetry-sector scan (template: JesseBrown1980/GitRAM).
+# 40 stateless cells, each one symsec case, gated on its own PASS markers;
+# all-or-nothing fan-in that verifies counts and checksums and seals one receipt.
+# Integer-only and deterministic: any cell can be reproduced bit for bit locally.
+name: GitRAM symsec scan (40 cells)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gitram-symscan-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  cell:
+    name: Cell ${{ matrix.id }} ${{ matrix.pot }} JE=${{ matrix.je }} L=${{ matrix.l }} ${{ matrix.sec }}
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        include:
+          - {id: "01", pot: harmonic, je: 16, l: 16, sec: A, guess: 30000000}
+          - {id: "02", pot: harmonic, je: 16, l: 16, sec: Pz, guess: 30000000}
+          - {id: "03", pot: harmonic, je: 12, l: 14, sec: A, guess: 30000000}
+          - {id: "04", pot: harmonic, je: 12, l: 14, sec: Pz, guess: 30000000}
+          - {id: "05", pot: harmonic, je: 12, l: 16, sec: A, guess: 30000000}
+          - {id: "06", pot: harmonic, je: 12, l: 16, sec: Pz, guess: 30000000}
+          - {id: "07", pot: harmonic, je: 25, l: 16, sec: A, guess: 30000000}
+          - {id: "08", pot: harmonic, je: 25, l: 16, sec: Pz, guess: 30000000}
+          - {id: "09", pot: harmonic, je: 25, l: 18, sec: A, guess: 30000000}
+          - {id: "10", pot: harmonic, je: 25, l: 18, sec: Pz, guess: 30000000}
+          - {id: "11", pot: harmonic, je: 36, l: 18, sec: A, guess: 30000000}
+          - {id: "12", pot: harmonic, je: 36, l: 18, sec: Pz, guess: 30000000}
+          - {id: "13", pot: harmonic, je: 36, l: 20, sec: A, guess: 30000000}
+          - {id: "14", pot: harmonic, je: 36, l: 20, sec: Pz, guess: 30000000}
+          - {id: "15", pot: harmonic, je: 49, l: 18, sec: A, guess: 30000000}
+          - {id: "16", pot: harmonic, je: 49, l: 18, sec: Pz, guess: 30000000}
+          - {id: "17", pot: harmonic, je: 49, l: 20, sec: A, guess: 30000000}
+          - {id: "18", pot: harmonic, je: 49, l: 20, sec: Pz, guess: 30000000}
+          - {id: "19", pot: linear, je: 20, l: 12, sec: A, guess: 20000000}
+          - {id: "20", pot: linear, je: 20, l: 12, sec: Pz, guess: 20000000}
+          - {id: "21", pot: linear, je: 20, l: 14, sec: A, guess: 20000000}
+          - {id: "22", pot: linear, je: 20, l: 14, sec: Pz, guess: 20000000}
+          - {id: "23", pot: linear, je: 20, l: 16, sec: A, guess: 20000000}
+          - {id: "24", pot: linear, je: 20, l: 16, sec: Pz, guess: 20000000}
+          - {id: "25", pot: linear, je: 20, l: 18, sec: A, guess: 20000000}
+          - {id: "26", pot: linear, je: 20, l: 18, sec: Pz, guess: 20000000}
+          - {id: "27", pot: linear, je: 40, l: 16, sec: A, guess: 30000000}
+          - {id: "28", pot: linear, je: 40, l: 16, sec: Pz, guess: 30000000}
+          - {id: "29", pot: linear, je: 40, l: 18, sec: A, guess: 30000000}
+          - {id: "30", pot: linear, je: 40, l: 18, sec: Pz, guess: 30000000}
+          - {id: "31", pot: linear, je: 80, l: 16, sec: A, guess: 30000000}
+          - {id: "32", pot: linear, je: 80, l: 16, sec: Pz, guess: 30000000}
+          - {id: "33", pot: linear, je: 80, l: 18, sec: A, guess: 30000000}
+          - {id: "34", pot: linear, je: 80, l: 18, sec: Pz, guess: 30000000}
+          - {id: "35", pot: linear, je: 80, l: 20, sec: A, guess: 30000000}
+          - {id: "36", pot: linear, je: 80, l: 20, sec: Pz, guess: 30000000}
+          - {id: "37", pot: linear, je: 160, l: 18, sec: A, guess: 30000000}
+          - {id: "38", pot: linear, je: 160, l: 18, sec: Pz, guess: 30000000}
+          - {id: "39", pot: linear, je: 160, l: 20, sec: A, guess: 30000000}
+          - {id: "40", pot: linear, je: 160, l: 20, sec: Pz, guess: 30000000}
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain 1.81
+        run: |
+          rustup toolchain install 1.81.0 --profile minimal
+          rustup override set 1.81.0
+      - name: Build symsec from in-repo source
+        run: cargo build --release -q -p rainbon --bin symsec
+      - name: One unit of work, gated on its own PASS markers
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          target/release/symsec ${{ matrix.l }} ${{ matrix.pot }} ${{ matrix.sec }} ${{ matrix.je }} 1 1200 ${{ matrix.guess }} | tee out/cell-${{ matrix.id }}.hbp
+          grep -q '|w_self_adjoint=PASS|' out/cell-${{ matrix.id }}.hbp
+          grep -q '|eps_up=' out/cell-${{ matrix.id }}.hbp
+          echo "GITRAM_CELL|id=${{ matrix.id }}|runner=github|json=0" >> out/cell-${{ matrix.id }}.hbp
+          (cd out && sha256sum cell-${{ matrix.id }}.hbp > cell-${{ matrix.id }}.sha256)
+          echo GITRAM_SHARD_PASS
+      - name: Upload the self-contained cell checkpoint
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cell-${{ matrix.id }}
+          retention-days: 30
+          if-no-files-found: error
+          path: out/
+
+  fan-in:
+    name: Verify ALL 40 checkpoints and seal one receipt
+    needs: cell
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cell-*
+          path: fan-in
+          merge-multiple: true
+      - name: Require ALL checkpoints, verify checksums, seal (no duplicate work)
+        run: |
+          set -euo pipefail
+          cd fan-in
+          count="$(ls cell-*.hbp | wc -l)"
+          test "$count" -eq 40
+          for f in cell-*.sha256; do sha256sum -c "$f"; done
+          cat cell-*.hbp > SYMSCAN-GITRAM.hbp
+          echo "GITRAM_SEAL|cells=$count|status=PASS|json=0" >> SYMSCAN-GITRAM.hbp
+          sha256sum SYMSCAN-GITRAM.hbp > SYMSCAN-GITRAM.sha256
+      - name: Upload the sealed receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sealed-symscan
+          retention-days: 30
+          if-no-files-found: error
+          path: fan-in/SYMSCAN-GITRAM.*
