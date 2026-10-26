@@ -1,0 +1,1 @@
+CROSSCHECK|fields=E_lowest,eps_up,r2,sector_states|excluded=ms,runner_metadata|pairs=12|result=identical|cases=harmonic(16,16)A/Pz,linear(20,12/14/16)A/Pz,linear(40,16)A/Pz,linear(80,16)A/Pz|json=0

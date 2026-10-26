@@ -25,8 +25,16 @@ test "$(echo "$lv" | sed -n 2,7p | sort -u | wc -l)" -le 2   # levels 1..6 coinc
 # 3. L=8 symmetry-sector values (pinned; equal to the full-lattice values)
 $B/symsec 8 harmonic A 9 1 800 10000000 | has "|sector_states=1306|.*|E_lowest=29637907/1000000|eps_up=1/1000000|r2=1962201/1000000|"
 $B/symsec 8 harmonic Pz 9 1 800 10000000 | has "|sector_states=8925|.*|E_lowest=40403024/1000000|eps_up=1/1000000|"
+# 3b. continuum extrapolation of the harmonic calibration (six box-converged points)
+python3 python/spacing_fit.py harmonic 9:902258 12:915556 16:927035 25:941770 36:951548 49:958590 > build/fit.hbp
+has "^FIT|potential=harmonic|points=6|Rinf=1000842/1000000|" build/fit.hbp
+has "^FIT|max_abs_residual=78/1000000|" build/fit.hbp
+cmp build/fit.hbp data/spacing_fit_harmonic.hbp
+# 3c. sealed GitRAM receipt intact
+(cd data && sha256sum -c SYMSCAN-GITRAM.sha256)
+has "^GITRAM_SEAL|cells=40|status=PASS|" data/SYMSCAN-GITRAM.hbp
 # 4. experimental mapping (calibration value c = 1)
 python3 python/experiment_map.py 1000000 | has "preon_mass=m=Delta (NR boundary)|r_max=35zm|LEP_limit=280zm|"
 # 5. integer-only audit
-python3 python/integer_only_audit.py python/experiment_map.py
+python3 python/integer_only_audit.py python/experiment_map.py python/spacing_fit.py
 echo "VERIFY|status=PASS|json=0"
